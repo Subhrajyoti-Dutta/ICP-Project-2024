@@ -32,4 +32,27 @@ isConnected = function(edgeMat, n){
   }
 }
 
-isConnected(edges, n)
+isCyclic = function(mat,n){
+  currEle = 1
+  nextExplore = c(1)
+  i = 1
+  while(i <= length(nextExplore)){
+    currEle = nextExplore[i]
+    adj = (1:n)[mat[currEle,] != 0]
+    if (!is.null(adj %in% nextExplore)){
+      return(TRUE)
+    }
+    nextExplore = c(nextExplore, adj)
+    i = i+1
+  }
+  return(FALSE)
+}
+
+prim = function(edgeMat, n){
+  if(!isConnected(edges, n)){
+    return(FALSE)
+  }
+  
+}
+
+isCyclic(makeMat(edges,n), n)
