@@ -182,58 +182,72 @@ class Graph {
     }
 
 }
-
 class AcyclicGraph extends Graph {
 
     public AcyclicGraph(int size) {
-        super(size);
+        super(size);  // Call the constructor of the parent class Graph
     }
 
     @Override
     public void addEdge(int node1, int node2, int weight) {
+        // Check if adding the edge would create a cycle before adding it
         if (!checkCyclic(node1, node2)) {
-            super.addEdge(node1, node2, weight);
+            super.addEdge(node1, node2, weight);  // Call the addEdge method from Graph
         }
     }
 
+    // Check if there's a cycle starting from node1 and reaching node2
     private boolean checkCyclic(int start, int end) {
-        Set<Node> visited = new HashSet<>();
+        Set<Node> visited = new HashSet<>();  // Keep track of visited nodes to detect cycles
         Node startNode = nodes.get(start);
         Node endNode = nodes.get(end);
         return hasCycle(startNode, endNode, visited);
     }
 
+    // Recursive helper function to perform the actual cycle detection
     private boolean hasCycle(Node current, Node target, Set<Node> visited) {
+        // If the current node is the target node, a cycle is found
         if (current == target) {
             return true;
         }
+
+        // Mark the current node as visited
         visited.add(current);
+
+        // Recursively check the neighbours of the current node
+        // If any neighbour (not already visited) leads to the target node (or a cycle), return true
         return current.getNeighbours()
                 .stream()
-                .anyMatch(neighbour -> !visited
-                        .contains(neighbour)
-                        && hasCycle(neighbour, target, visited));
+                .anyMatch(neighbour -> !visited.contains(neighbour) && hasCycle(neighbour, target, visited));
     }
 }
-
 class KruskalGraph extends AcyclicGraph {
+
     public KruskalGraph(Graph graph) {
-        super(graph.getSize());
+        super(graph.getSize());  // Inherit the size from the provided graph
 
+        // Priority queue to efficiently select edges with minimum weight
         PriorityQueue<Edge> minHeap = new PriorityQueue<>(Comparator.comparingInt(Edge::getWeight));
-        minHeap.addAll(graph.edges);
+        minHeap.addAll(graph.getEdges());  // Add all edges from the provided graph to the queue
 
+        // Kruskal's algorithm for finding Minimum Spanning Tree
         for (Edge edge : minHeap) {
+            // Get the root nodes (represent connected components) of the two nodes in the edge
             int root1 = find(edge.getNode(0).getPos());
             int root2 = find(edge.getNode(1).getPos());
 
+            // If the nodes belong to different connected components (not yet merged)
             if (root1 != root2) {
+                // Add the edge to the MST (assuming super.addEdge ensures acyclic property)
                 super.addEdge(edge.getNode(0).getPos(), edge.getNode(1).getPos(), edge.getWeight());
+
+                // Merge the connected components using union-find (assuming union and find methods are implemented)
                 union(root1, root2);
             }
         }
     }
 }
+
 
 class PrimGraph extends AcyclicGraph {
 
@@ -268,55 +282,71 @@ class PrimGraph extends AcyclicGraph {
 }
 
 public class Kruskal {
+
     public static void main(String[] args) throws IOException {
-        int upper = 5100;
+        // Maximum number of nodes in the graph (adjustable)
+        final int upperLimit = 5000;
+
+        // Random number generator for creating graph edges
         Random random = new Random();
-        Graph myGraph;
-        File file = new File("time.csv");
-        FileWriter fr = new FileWriter(file, false);
-        File file2 = new File("time2.csv");
-        FileWriter fr2 = new FileWriter(file2, false);
+
+        // Files for storing execution time measurements
+        File primTimeFile = new File("time.csv");
+        File kruskalTimeFile = new File("time2.csv");
+
+        // Writers for the CSV files
+        FileWriter primFileWriter = new FileWriter(primTimeFile, false); // Overwrite existing content
+        FileWriter kruskalFileWriter = new FileWriter(kruskalTimeFile, false);
+
         int node1, node2;
-        int rep = 3;
-        for (int n = 100; n < upper; n += 100) {
-            long startTime2 = 0, endTime2 = 0;
-            long startTime = 0, endTime = 0;
-            System.out.println("Graph Size = " + n);
-            for (int j = 0; j < rep; j++) {
-                myGraph = new Graph(n);
-                int i = 0;
-                do {
-                    node1 = random.nextInt(n);
-                    node2 = random.nextInt(n);
-                    if (node1 == node2)
-                        continue;
-                    i++;
-                    myGraph.addEdge(node1, node2, random.nextInt(100));
-                } while (i < n * (n - 1) / 4);
-                do {
-                    node1 = random.nextInt(n);
-                    node2 = random.nextInt(n);
-                    if (node1 == node2)
-                        continue;
-                    myGraph.addEdge(node1, node2, random.nextInt(100));
+        // Number of repetitions for each graph size to get average time
+        int repetitions = 3;
 
-                } while (!myGraph.isConnected());
+        for (int numNodes = 100; numNodes <= upperLimit; numNodes += 100) {
+            long startTimePrim = 0, endTimePrim = 0;
+            long startTimeKruskal = 0, endTimeKruskal = 0;
 
-                startTime += System.nanoTime();
+            System.out.println("Graph Size = " + numNodes);
+
+            for (int j = 0; j < repetitions; j++) {
+                // Create a new graph with the specified number of nodes
+                Graph myGraph = new Graph(numNodes);
+
+                // Generate random edges until the graph is connected (ensures MST is possible)
+                int edgesAdded = 0;
+                do {
+                    node1 = random.nextInt(numNodes);
+                    node2 = random.nextInt(numNodes);
+                    if (node1 == node2) {
+                        continue;  // Skip self-loops
+                    }
+                    myGraph.addEdge(node1, node2, random.nextInt(100));
+                } while (++edgesAdded < numNodes * (numNodes - 1) / 4 && !myGraph.isConnected());
+
+                // Measure execution time for Prim's algorithm
+                startTimePrim += System.nanoTime();
                 new PrimGraph(myGraph);
-                endTime += System.nanoTime();
+                endTimePrim += System.nanoTime();
 
-                startTime2 += System.nanoTime();
+                // Measure execution time for Kruskal's algorithm
+                startTimeKruskal += System.nanoTime();
                 new KruskalGraph(myGraph);
-                endTime2 += System.nanoTime();
+                endTimeKruskal += System.nanoTime();
             }
-            System.out.println("Total-time  = " + (endTime - startTime) / 1e9 / rep);
-            fr.write(n + "," + (endTime - startTime) / 1e9 / rep + System.lineSeparator());
 
-            System.out.println("Total-time  = " + (endTime2 - startTime2) / 1e9 / rep);
-            fr2.write(n + "," + (endTime2 - startTime2) / 1e9 / rep + System.lineSeparator());
+            // Calculate and print average execution time for Prim's algorithm
+            double avgPrimTime = (endTimePrim - startTimePrim) / 1e9 / repetitions;
+            System.out.println("Average Time (Prim's) = " + avgPrimTime + " seconds");
+            primFileWriter.write(numNodes + "," + avgPrimTime + System.lineSeparator());
+
+            // Calculate and print average execution time for Kruskal's algorithm
+            double avgKruskalTime = (endTimeKruskal - startTimeKruskal) / 1e9 / repetitions;
+            System.out.println("Average Time (Kruskal's) = " + avgKruskalTime + " seconds");
+            kruskalFileWriter.write(numNodes + "," + avgKruskalTime + System.lineSeparator());
         }
-        fr.close();
-        fr2.close();
+
+        // Close the file writers
+        primFileWriter.close();
+        kruskalFileWriter.close();
     }
 }
